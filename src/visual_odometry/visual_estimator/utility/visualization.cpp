@@ -124,9 +124,6 @@ void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q,
     // DONE: 下面这个好像没有卵用？ : 用于可视化发布T_worldlidar_worldvins
     if (ALIGN_CAMERA_LIDAR_COORDINATE)
     {
-        // static tf::Transform t_odom_world =
-        //     tf::Transform(tf::createQuaternionFromRPY(0, 0, M_PI), tf::Vector3(0, 0, 0));
-        // modified:
         static tf::Transform t_odom_world =
             tf::Transform(tf::createQuaternionFromRPY(0, 0, 0), tf::Vector3(0, 0, 0));
         if (header.stamp.toSec() - last_align_time > 1.0)
@@ -135,12 +132,7 @@ void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q,
             {
                 tf::StampedTransform trans_odom_baselink;
                 listener.lookupTransform("odom", "base_link", ros::Time(0), trans_odom_baselink);
-                // t_odom_world = transformConversion(trans_odom_baselink) *
-                //                transformConversion(trans_world_vinsbody_ros).inverse();
-                // modified:
                 t_odom_world = transformConversion(trans_odom_baselink) *
-                               tf::Transform(tf::createQuaternionFromRPY(L_I_RX, L_I_RY, L_I_RZ),
-                                             tf::Vector3(L_I_TX, L_I_TY, L_I_TZ)) *
                                transformConversion(trans_world_vinsbody_ros).inverse();
                 last_align_time = header.stamp.toSec();
             }

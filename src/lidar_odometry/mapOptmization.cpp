@@ -1,6 +1,8 @@
+#include "tf/LinearMath/Quaternion.h"
 #include "utility.h"
 #include "lvi_sam/cloud_info.h"
 
+#include <Eigen/src/Geometry/Quaternion.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -2007,13 +2009,16 @@ public:
         // Publish TF
         static tf::TransformBroadcaster br;
 
-        tf::Transform t_odom_to_lidar = tf::Transform(
-            tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1],
-                                        transformTobeMapped[2]),
-            tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+        Eigen::Quaterniond q(extRot);
+        tf::Transform      t_odom_to_lidar =
+            tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
+                          tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
         tf::StampedTransform trans_odom_to_lidar =
-            tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "odom", "lidar_link");
+            tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "base_link", "lidar_link");
+        tf::StampedTransform trans_odom_to_lidar_odom =
+            tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "odom", "lidar_odom");
         br.sendTransform(trans_odom_to_lidar);
+        br.sendTransform(trans_odom_to_lidar_odom);
     }
 
     void updatePath(const PointTypePose &pose_in)
@@ -2055,7 +2060,7 @@ public:
             *cloudOut += *transformPointCloud(laserCloudCornerLastDS, &thisPose6D);
             *cloudOut += *transformPointCloud(laserCloudSurfLastDS, &thisPose6D);
             // "/lidar/mapping/cloud_registered"
-            publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, "odom");
+            publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, "lidar_odom");
         }
         // publish registered high-res raw cloud
         // "/lidar/mapping/cloud_registered_raw"

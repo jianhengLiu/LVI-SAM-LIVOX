@@ -28,9 +28,6 @@ public:
     ros::Publisher  pubImuOdometry;
     ros::Publisher  pubImuPath;
 
-    // map -> odom
-    tf::Transform            map_to_odom;
-    tf::TransformBroadcaster tfMap2Odom;
     // odom -> base_link
     tf::TransformBroadcaster tfOdom2BaseLink;
 
@@ -91,8 +88,6 @@ public:
         // 发布imu频率的里程计（lidar坐标系T_W_L）
         pubImuOdometry = nh.advertise<nav_msgs::Odometry>("odometry/imu", 2000);
         pubImuPath     = nh.advertise<nav_msgs::Path>(PROJECT_NAME + "/lidar/imu/path", 1);
-
-        map_to_odom = tf::Transform(tf::createQuaternionFromRPY(0, 0, 0), tf::Vector3(0, 0, 0));
 
         boost::shared_ptr<gtsam::PreintegrationParams> p =
             gtsam::PreintegrationParams::MakeSharedU(imuGravity);
@@ -413,9 +408,6 @@ public:
     {
         // imu原始测量数据转换到lidar系（加速度，角速度，RPY）
         sensor_msgs::Imu thisImu = imuConverter(*imuMsg);
-        // publish static tf
-        tfMap2Odom.sendTransform(
-            tf::StampedTransform(map_to_odom, thisImu.header.stamp, "map", "odom"));
 
         imuQueOpt.push_back(thisImu);
         imuQueImu.push_back(thisImu);
@@ -451,16 +443,6 @@ public:
 
         // transform imu pose to ldiar
         gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
-        // modified: 输出修改为imu坐标系的位姿，而不是lidar坐标系的位姿
-        // gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);
-
-        // odometry.pose.pose.position.x    = lidarPose.translation().x();
-        // odometry.pose.pose.position.y    = lidarPose.translation().y();
-        // odometry.pose.pose.position.z    = lidarPose.translation().z();
-        // odometry.pose.pose.orientation.x = lidarPose.rotation().toQuaternion().x();
-        // odometry.pose.pose.orientation.y = lidarPose.rotation().toQuaternion().y();
-        // odometry.pose.pose.orientation.z = lidarPose.rotation().toQuaternion().z();
-        // odometry.pose.pose.orientation.w = lidarPose.rotation().toQuaternion().w();
 
         odometry.pose.pose.position.x    = imuPose.translation().x();
         odometry.pose.pose.position.y    = imuPose.translation().y();

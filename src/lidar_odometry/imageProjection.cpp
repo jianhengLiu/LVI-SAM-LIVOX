@@ -803,7 +803,7 @@ public:
     {
         cloudInfo.header = cloudHeader;
         cloudInfo.cloud_deskewed =
-            publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, "base_link");
+            publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, "lidar_link");
         pubLaserCloudInfo.publish(cloudInfo); // TODO: ??? 怎么cloudInfo里面也有完整的点云信息？
     }
 };

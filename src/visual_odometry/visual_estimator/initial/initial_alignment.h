@@ -138,68 +138,6 @@ public:
             return odometry_channel;
         }
 
-        // convert odometry rotation from lidar ROS frame to VINS camera frame (only rotation, assume lidar, camera, and IMU are close enough)
-        // TODO: 这里没有考虑外参
-        // tf::Quaternion q_odom_lidar;  // T_W_L
-        // tf::quaternionMsgToTF(odomCur.pose.pose.orientation, q_odom_lidar);
-
-        // modified: T_W_L
-        // Eigen::Affine3f T_odom_lidar = Eigen::Affine3f::Identity();
-        // T_odom_lidar.translation() =
-        //     Eigen::Vector3f(odomCur.pose.pose.position.x, odomCur.pose.pose.position.y,
-        //                     odomCur.pose.pose.position.z);
-        // T_odom_lidar.rotate(
-        //     Eigen::Quaternionf(odomCur.pose.pose.orientation.w, odomCur.pose.pose.orientation.x,
-        //                        odomCur.pose.pose.orientation.y, odomCur.pose.pose.orientation.z));
-
-        // tf::Transform T_odom_lidar = tf::Transform(
-        //     tf::Quaternion(odomCur.pose.pose.orientation.x, odomCur.pose.pose.orientation.y,
-        //                    odomCur.pose.pose.orientation.z, odomCur.pose.pose.orientation.w),
-        //     tf::Vector3(odomCur.pose.pose.position.x, odomCur.pose.pose.position.y,
-        //                 odomCur.pose.pose.position.z));
-
-        // DONE: 这里又自己在代码里面用180强行转坐标，修改为依据外参进行变换（血压上来了）
-        // // 不对把应该是：T_W_C = T_W_L * T_L_C : 这里实际对应： R_W_I = R_W_L * R_L_I 转换为imu
-        // tf::Quaternion q_odom_cam = tf::createQuaternionFromRPY(0, 0, M_PI) * (q_odom_lidar * q_lidar_to_cam); // global rotate by pi // mark: camera - lidar
-        // modified: T_W_I = T_W_L * T_L_I
-        // tf::Quaternion q_odom_imu = (q_odom_lidar * q_lidar_to_imu.inverse());
-        // tf::quaternionTFToMsg(q_odom_imu, odomCur.pose.pose.orientation);
-        // tf::Transform T_odom_imu = T_odom_lidar * q_lidar_to_imu.inverse();
-        // Eigen::Affine3f T_odom_imu = T_odom_lidar * q_lidar_to_imu_eigen;
-
-        // convert odometry position from lidar ROS frame to VINS camera frame
-        // TODO: modified: T_W_I = T_W_L * T_L_I : 这里没有考虑外参平移（p_L_I = 0）: 实际应为： p_W_I' = R_W_L*p_L_I' + p_W_L'
-
-        Eigen::Quaterniond q_eigen(odomCur.pose.pose.orientation.w, odomCur.pose.pose.orientation.x,
-                                   odomCur.pose.pose.orientation.y,
-                                   odomCur.pose.pose.orientation.z);
-        Eigen::Vector3d    p_eigen(odomCur.pose.pose.position.x, odomCur.pose.pose.position.y,
-                                   odomCur.pose.pose.position.z);
-        Eigen::Vector3d    v_eigen(odomCur.twist.twist.linear.x, odomCur.twist.twist.linear.y,
-                                   odomCur.twist.twist.linear.z);
-        // TODO: 这是干嘛？: 自定义的q_lidar_to_cam_eigen变换平移和速度
-        // Eigen::Vector3d p_eigen_new = q_lidar_to_cam_eigen * p_eigen;
-        // Eigen::Vector3d v_eigen_new = q_lidar_to_cam_eigen * v_eigen;
-
-        // modified:
-        Eigen::Quaterniond q_eigen_new = q_eigen * q_lidar_to_imu_eigen;
-        ;
-        Eigen::Vector3d p_eigen_new = p_eigen;
-        Eigen::Vector3d v_eigen_new = v_eigen;
-
-        odomCur.pose.pose.position.x = p_eigen_new.x();
-        odomCur.pose.pose.position.y = p_eigen_new.y();
-        odomCur.pose.pose.position.z = p_eigen_new.z();
-
-        odomCur.pose.pose.orientation.w = q_eigen_new.w();
-        odomCur.pose.pose.orientation.x = q_eigen_new.x();
-        odomCur.pose.pose.orientation.y = q_eigen_new.y();
-        odomCur.pose.pose.orientation.z = q_eigen_new.z();
-
-        odomCur.twist.twist.linear.x = v_eigen_new.x();
-        odomCur.twist.twist.linear.y = v_eigen_new.y();
-        odomCur.twist.twist.linear.z = v_eigen_new.z();
-
         // modified:
         odometry_channel[0]  = odomCur.pose.covariance[0];
         odometry_channel[1]  = odomCur.pose.pose.position.x;
