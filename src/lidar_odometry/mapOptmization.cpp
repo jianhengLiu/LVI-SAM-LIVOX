@@ -1,8 +1,6 @@
-#include "tf/LinearMath/Quaternion.h"
 #include "utility.h"
 #include "lvi_sam/cloud_info.h"
 
-#include <Eigen/src/Geometry/Quaternion.h>
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -581,7 +579,8 @@ public:
             if (cureKeyframeCloud->size() < 300 || prevKeyframeCloud->size() < 1000)
                 return;
             if (pubHistoryKeyFrames.getNumSubscribers() != 0)
-                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp, "lidar_odom");
+                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp,
+                             "lidar_odom");
         }
 
         // get keyframe pose
@@ -1984,11 +1983,11 @@ public:
         // Publish TF
         static tf::TransformBroadcaster br;
         Eigen::Quaterniond              q(extRot);
-        tf::Transform                   t_odom_to_lidar =
+        tf::Transform                   t_lidar_to_imu =
             tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
                           tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
         tf::StampedTransform trans_odom_to_lidar_odom =
-            tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "odom", "lidar_odom");
+            tf::StampedTransform(t_lidar_to_imu, timeLaserInfoStamp, "odom", "lidar_odom");
         br.sendTransform(trans_odom_to_lidar_odom);
 
         tf::Transform t_lidar_odom_to_lidar = tf::Transform(

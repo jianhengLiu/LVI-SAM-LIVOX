@@ -1,6 +1,8 @@
+#include "tf/transform_datatypes.h"
 #include "utility.h"
 #include "lvi_sam/cloud_info.h"
 
+#include <Eigen/src/Geometry/Quaternion.h>
 #include <livox_ros_driver/CustomMsg.h>
 
 // LIVOX AVIA
@@ -137,9 +139,9 @@ public:
         ROS_INFO("\033[1;32m Subscribe to IMU Topic: %s.\033[0m", imuTopic.c_str());
         subImu  = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this,
                                                 ros::TransportHints().tcpNoDelay());
-        subOdom = nh.subscribe<nav_msgs::Odometry>(
-            PROJECT_NAME + "/vins/odometry/imu_propagate", 2000,
-            &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subOdom = nh.subscribe<nav_msgs::Odometry>(PROJECT_NAME + "/vins/odometry/imu_propagate",
+                                                   2000, &ImageProjection::odometryHandler, this,
+                                                   ros::TransportHints().tcpNoDelay());
 
         switch (lidarType)
         {
@@ -530,18 +532,23 @@ public:
                 break;
         }
 
-        // TODO： 为了得到rpy有必要先转成tf吗，后面也没有用到tf，更多就是一个转换的介质
-        tf::Quaternion orientation;
-        tf::quaternionMsgToTF(startOdomMsg.pose.pose.orientation, orientation);
+        Eigen::Quaterniond q(extRot);
+        tf::Transform      t_lidar_to_imu =
+            tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
+                          tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
+
+        tf::Pose pose_tf;
+        tf::poseMsgToTF(startOdomMsg.pose.pose, pose_tf);
+        pose_tf = t_lidar_to_imu.inverse() * pose_tf * t_lidar_to_imu;
 
         double roll, pitch, yaw;
-        tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+        tf::Matrix3x3(pose_tf.getRotation()).getRPY(roll, pitch, yaw);
 
         // Initial guess used in mapOptimization
         // 将点云信息中的位姿设置为视觉里程计的位姿
-        cloudInfo.odomX       = startOdomMsg.pose.pose.position.x;
-        cloudInfo.odomY       = startOdomMsg.pose.pose.position.y;
-        cloudInfo.odomZ       = startOdomMsg.pose.pose.position.z;
+        cloudInfo.odomX       = pose_tf.getOrigin().x();
+        cloudInfo.odomY       = pose_tf.getOrigin().y();
+        cloudInfo.odomZ       = pose_tf.getOrigin().z();
         cloudInfo.odomRoll    = roll;
         cloudInfo.odomPitch   = pitch;
         cloudInfo.odomYaw     = yaw;
@@ -804,7 +811,7 @@ public:
         cloudInfo.header = cloudHeader;
         cloudInfo.cloud_deskewed =
             publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, "lidar_link");
-        pubLaserCloudInfo.publish(cloudInfo); // TODO: ??? 怎么cloudInfo里面也有完整的点云信息？
+        pubLaserCloudInfo.publish(cloudInfo);
     }
 };
 

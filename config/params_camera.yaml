@@ -43,7 +43,7 @@ projection_parameters:
 fisheye_mask: "/config/fisheye_mask_720x540.jpg"
 
 #imu parameters       The more accurate parameters you provide, the worse performance
-acc_n: 0.02         # accelerometer measurement noise standard deviation.
+acc_n: 0.1         # accelerometer measurement noise standard deviation.
 gyr_n: 0.01         # gyroscope measurement noise standard deviation.
 acc_w: 0.002        # accelerometer bias random work noise standard deviation.
 gyr_w: 4.0e-5       # gyroscope bias random work noise standard deviation.

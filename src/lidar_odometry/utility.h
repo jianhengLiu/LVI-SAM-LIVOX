@@ -97,15 +97,15 @@ public:
     int    downsampleRate;
 
     // IMU
-    float              imuAccNoise;
-    float              imuGyrNoise;
-    float              imuAccBiasN;
-    float              imuGyrBiasN;
-    float              imuGravity;
-    vector<double>     extRotV;
-    vector<double>     extTransV;
-    Eigen::Matrix3d    extRot;
-    Eigen::Vector3d    extTrans;
+    float           imuAccNoise;
+    float           imuGyrNoise;
+    float           imuAccBiasN;
+    float           imuGyrBiasN;
+    float           imuGravity;
+    vector<double>  extRotV;
+    vector<double>  extTransV;
+    Eigen::Matrix3d extRot;
+    Eigen::Vector3d extTrans;
 
     // LOAM
     float edgeThreshold;
@@ -233,14 +233,12 @@ public:
         // rotate acceleration
         Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y,
                             imu_in.linear_acceleration.z);
-        acc = extRot * acc;  // TODO: 分析extRot作用： 将加速度数据转换到lidar坐标系下
         imu_out.linear_acceleration.x = acc.x();
         imu_out.linear_acceleration.y = acc.y();
         imu_out.linear_acceleration.z = acc.z();
         // rotate gyroscope
         Eigen::Vector3d gyr(imu_in.angular_velocity.x, imu_in.angular_velocity.y,
                             imu_in.angular_velocity.z);
-        gyr                        = extRot * gyr;
         imu_out.angular_velocity.x = gyr.x();
         imu_out.angular_velocity.y = gyr.y();
         imu_out.angular_velocity.z = gyr.z();
