@@ -28,8 +28,8 @@ public:
     ros::Publisher  pubImuOdometry;
     ros::Publisher  pubImuPath;
 
-    // odom -> base_link
-    tf::TransformBroadcaster tfOdom2BaseLink;
+    // odom -> imu_link
+    tf::TransformBroadcaster tfOdom2ImuLink;
 
     bool systemInitialized = false;
 
@@ -66,15 +66,9 @@ public:
     int key                      = 1;
     int imuPreintegrationResetId = 0;
 
-    // DONE: 这里的旋转怎么又不考虑了？: 因为imuConverter中已经把原始imu数据转到了lidar坐标系下了
-    gtsam::Pose3 imu2Lidar = gtsam::Pose3(
-        gtsam::Rot3(1, 0, 0, 0), gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()));
-    gtsam::Pose3 lidar2Imu = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0),
-                                          gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
-    // modified:
-    // gtsam::Pose3 lidar2Imu =
-    //     gtsam::Pose3(gtsam::Rot3(extRot), gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
-    // gtsam::Pose3 imu2Lidar = lidar2Imu.inverse();
+    gtsam::Pose3 lidar2Imu =
+        gtsam::Pose3(gtsam::Rot3(extRot), gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
+    gtsam::Pose3 imu2Lidar = lidar2Imu.inverse();
 
     IMUPreintegration()
     {
@@ -140,7 +134,7 @@ public:
         systemInitialized = false;
     }
     /**
-     * 订阅激光里程计，来自mapOptimization
+     * 订阅激光里程计T_lidarodom_lidar，来自mapOptimization
      * 1、每隔100帧激光里程计，重置ISAM2优化器，添加里程计、速度、偏置先验因子，执行优化
      * 2、计算前一帧激光里程计与当前帧激光里程计之间的imu预积分量，用前一帧状态施加预积分量得到当前帧初始状态估计，添加来自mapOptimization的当前帧位姿，进行因子图优化，更新当前帧状态
      * 3、优化之后，执行重传播；优化更新了imu的偏置，用最新的偏置重新计算当前激光里程计时刻之后的imu预积分，这个预积分用于计算每时刻位姿
@@ -193,7 +187,7 @@ public:
             }
             // initial pose
             // 添加里程计位姿先验因子
-            prevPose_ = lidarPose.compose(lidar2Imu);
+            prevPose_ = lidar2Imu.compose(lidarPose).compose(imu2Lidar);
             // X(0)表示第一个位姿，有一个先验的约束。约束内容为，lidar到imu下的prevPose_这么一个位姿
             // 该约束的权重，置信度为priorPoseNoise(1e-2)，越小代表置信度越高
             gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
@@ -302,7 +296,7 @@ public:
             gtsam::noiseModel::Diagonal::Sigmas(sqrt(imuIntegratorOpt_->deltaTij()) *
                                                 noiseModelBetweenBias)));
         // add pose factor
-        gtsam::Pose3 curPose = lidarPose.compose(lidar2Imu);
+        gtsam::Pose3 curPose = (lidar2Imu.compose(lidarPose)).compose(imu2Lidar);
         // 对于 LIO-SAM ，如果退化就让置信度小一些
         // LIO-SAM 此处代码为：
         // gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curPose, degenerate ? correctionNoise2 : correctionNoise);
@@ -496,8 +490,8 @@ public:
         tf::poseMsgToTF(odometry.pose.pose, tCur);
         // 这个应该是 T_odom_imu
         tf::StampedTransform odom_2_baselink =
-            tf::StampedTransform(tCur, thisImu.header.stamp, "odom", "base_link");
-        tfOdom2BaseLink.sendTransform(odom_2_baselink);
+            tf::StampedTransform(tCur, thisImu.header.stamp, "odom", "imu_link");
+        tfOdom2ImuLink.sendTransform(odom_2_baselink);
     }
 };
 

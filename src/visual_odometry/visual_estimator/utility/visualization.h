@@ -27,13 +27,15 @@ extern ros::Publisher pub_ref_pose, pub_cur_pose;
 extern ros::Publisher pub_key;
 extern nav_msgs::Path path;
 extern ros::Publisher pub_pose_graph;
-extern int IMAGE_ROW, IMAGE_COL;
+extern int            IMAGE_ROW, IMAGE_COL;
 
 void registerPub(ros::NodeHandle &n);
 
-tf::Transform transformConversion(const tf::StampedTransform& t);
+tf::Transform transformConversion(const tf::StampedTransform &t);
 
-void pubLatestOdometry(const Eigen::Vector3d &P, const Eigen::Quaterniond &Q, const Eigen::Vector3d &V, const std_msgs::Header &header, const int &failureId);
+void pubLatestOdometry(const Estimator &estimator, const Eigen::Vector3d &P,
+                       const Eigen::Quaterniond &Q, const Eigen::Vector3d &V,
+                       const std_msgs::Header &header, const int &failureId);
 
 void printStatistics(const Estimator &estimator, double t);
 

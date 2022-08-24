@@ -10,7 +10,6 @@ lvi_sam:
 
   # Heading
   useImuHeadingInitialization: false          # if using GPS data, set to "true"
-  useImuMagnetometer: false
   
   # Export settings
   savePCD: false                              # https://github.com/TixiaoShan/LIO-SAM/issues/3

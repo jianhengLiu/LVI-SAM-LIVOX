@@ -112,9 +112,8 @@ public:
         // T_W_I
         try
         {
-            listener.waitForTransform("vins_world", "vins_body_ros", stamp_cur,
-                                      ros::Duration(0.01));
-            listener.lookupTransform("vins_world", "vins_body_ros", stamp_cur, transform);
+            listener.waitForTransform("vins_world", "vins_cam_ros", stamp_cur, ros::Duration(0.01));
+            listener.lookupTransform("vins_world", "vins_cam_ros", stamp_cur, transform);
         }
         catch (tf::TransformException ex)
         {
@@ -146,14 +145,9 @@ public:
             feature_cur.normalize();
             // convert to ROS standard
             PointType p;
-            // TODO: 能不能统一坐标啊，别自己乱换啊：相机坐标系是z轴朝前，他这里自行变换了相机坐标系
-            p.x         = feature_cur(2);
-            p.y         = -feature_cur(0);
-            p.z         = -feature_cur(1);
-
-            // p.x         = feature_cur(0);
-            // p.y         = feature_cur(1);
-            // p.z         = feature_cur(2);
+            p.x         = feature_cur(0);
+            p.y         = feature_cur(1);
+            p.z         = feature_cur(2);
             p.intensity = -1;  // intensity will be used to save depth
             features_3d_sphere->push_back(p);
         }
@@ -167,14 +161,14 @@ public:
         {
             PointType p = depth_cloud_local->points[i];
             // filter points not in camera view
-            if (p.x < 0 || abs(p.y / p.x) > 10 || abs(p.z / p.x) > 10)
+            if (p.z < 0 || abs(p.y / p.z) > 10 || abs(p.x / p.z) > 10)
                 continue;
             // find row id in range image
-            float row_angle = atan2(p.z, sqrt(p.x * p.x + p.y * p.y)) * 180.0 / M_PI +
+            float row_angle = atan2(-p.y, sqrt(p.x * p.x + p.z * p.z)) * 180.0 / M_PI +
                               90.0;  // degrees, bottom -> up, 0 -> 360
             int row_id = round(row_angle / bin_res);
             // find column id in range image
-            float col_angle = atan2(p.x, p.y) * 180.0 / M_PI;  // degrees, left -> right, 0 -> 360
+            float col_angle = atan2(p.z, -p.x) * 180.0 / M_PI;  // degrees, left -> right, 0 -> 360
             int   col_id    = round(col_angle / bin_res);
             // id may be out of boundary
             if (row_id < 0 || row_id >= num_bins || col_id < 0 || col_id >= num_bins)
@@ -199,7 +193,7 @@ public:
             }
         }
         *depth_cloud_local = *depth_cloud_local_filter2;
-        publishCloud(&pub_depth_cloud, depth_cloud_local, stamp_cur, "vins_body_ros");
+        publishCloud(&pub_depth_cloud, depth_cloud_local, stamp_cur, "vins_cam_ros");
 
         // 5. project depth cloud onto a unit sphere
         pcl::PointCloud<PointType>::Ptr depth_cloud_unit_sphere(new pcl::PointCloud<PointType>());
@@ -274,13 +268,13 @@ public:
                 features_3d_sphere->points[i].z *= s;
                 // the obtained depth here is for unit sphere, VINS estimator needs depth for
                 // normalized feature (by value z), (lidar x = camera z)
-                features_3d_sphere->points[i].intensity = features_3d_sphere->points[i].x;
+                features_3d_sphere->points[i].intensity = features_3d_sphere->points[i].z;
             }
         }
 
         // visualize features in cartesian 3d space (including the feature without depth (default
         // 1))
-        publishCloud(&pub_depth_feature, features_3d_sphere, stamp_cur, "vins_body_ros");
+        publishCloud(&pub_depth_feature, features_3d_sphere, stamp_cur, "vins_cam_ros");
 
         // update depth value for return
         for (int i = 0; i < (int)features_3d_sphere->size(); ++i)
@@ -298,9 +292,8 @@ public:
             for (int i = 0; i < (int)depth_cloud_local->size(); ++i)
             {
                 // convert points from 3D to 2D
-                Eigen::Vector3d p_3d(-depth_cloud_local->points[i].y,
-                                     -depth_cloud_local->points[i].z,
-                                     depth_cloud_local->points[i].x);
+                Eigen::Vector3d p_3d(depth_cloud_local->points[i].x, depth_cloud_local->points[i].y,
+                                     depth_cloud_local->points[i].z);
                 Eigen::Vector2d p_2d;
                 camera_model->spaceToPlane(p_3d, p_2d);
 

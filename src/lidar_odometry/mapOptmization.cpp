@@ -524,7 +524,8 @@ public:
             globalMapVisualizationLeafSize);  // for global map visualization
         downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
         downSizeFilterGlobalMapKeyFrames.filter(*globalMapKeyFramesDS);
-        publishCloud(&pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp, "odom");
+        publishCloud(&pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
+                     "lidar_odom");
     }
 
     void loopHandler(const std_msgs::Float64MultiArray::ConstPtr &loopMsg)
@@ -857,10 +858,7 @@ public:
             if (!useImuHeadingInitialization)
                 transformTobeMapped[2] = 0;
 
-            if (useImuMagnetometer)
-                ROS_INFO("\033[1;32m Using a 9-axis IMU.\033[0m");
-            else
-                ROS_INFO("\033[1;32m Using a 6-axis IMU.\033[0m");
+            ROS_INFO("\033[1;32m Using a 6-axis IMU.\033[0m");
 
             // 将IMU磁力计提供的欧拉角＋平移置0转换为Eigen::Affine3f格式的静态变量lastImuTransformation
             lastImuTransformation =
@@ -938,46 +936,22 @@ public:
         // 如果没有里程记信息，就是用imu的旋转信息来更新，因为单纯使用imu无法得到靠谱的平移信息，因此，平移直接置0
         if (cloudInfo.imuAvailable == true)
         {
-            if (useImuMagnetometer)
-            {
-                // ROS_INFO("Using IMU initial guess");
-                Eigen::Affine3f transBack = pcl::getTransformation(
-                    0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
-                Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
-
-                Eigen::Affine3f transTobe  = trans2Affine3f(transformTobeMapped);
-                Eigen::Affine3f transFinal = transTobe * transIncre;
-                pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3],
-                                                  transformTobeMapped[4], transformTobeMapped[5],
-                                                  transformTobeMapped[0], transformTobeMapped[1],
-                                                  transformTobeMapped[2]);
-
-                lastImuTransformation =
-                    pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit,
-                                           cloudInfo.imuYawInit);  // save imu before return;
-            }
-            else
-            {
-                /**
+            /**
                 * @description: 这里修改不使用imu的磁力计信息提供好的初值，依据恒速模型预测位姿（or更简单可以直接使用上一次优化的结果作为初值）
                 可能导致的问题：
                 1. 如果上一次优化的结果是靠谱的，那么这次优化的结果也是靠谱的
                 2. 快速运动可能导致难以收敛
                 * @return {*}
                 */
-                Eigen::Affine3f transBack  = trans2Affine3f(transformTobeMapped);
-                Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
+            Eigen::Affine3f transBack  = trans2Affine3f(transformTobeMapped);
+            Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
-                Eigen::Affine3f transFinal = transBack * transIncre;
-                pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3],
-                                                  transformTobeMapped[4], transformTobeMapped[5],
-                                                  transformTobeMapped[0], transformTobeMapped[1],
-                                                  transformTobeMapped[2]);
-                // 这个变量跟imu没有关系，只是用来记录上一次的位姿估计结果
-                lastImuTransformation = transBack;
-
-                // 直接使用上一次优化的结果作为初值: 把上面的都注释掉就好
-            }
+            Eigen::Affine3f transFinal = transBack * transIncre;
+            pcl::getTranslationAndEulerAngles(
+                transFinal, transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
+                transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+            // 这个变量跟imu没有关系，只是用来记录上一次的位姿估计结果
+            lastImuTransformation = transBack;
 
             return;
         }
@@ -1994,8 +1968,8 @@ public:
         // Publish odometry for ROS
         nav_msgs::Odometry laserOdometryROS;
         laserOdometryROS.header.stamp          = timeLaserInfoStamp;
-        laserOdometryROS.header.frame_id       = "odom";
-        laserOdometryROS.child_frame_id        = "odom_mapping";
+        laserOdometryROS.header.frame_id       = "lidar_odom";
+        laserOdometryROS.child_frame_id        = "lidar_odom_mapping";
         laserOdometryROS.pose.pose.position.x  = transformTobeMapped[3];
         laserOdometryROS.pose.pose.position.y  = transformTobeMapped[4];
         laserOdometryROS.pose.pose.position.z  = transformTobeMapped[5];
@@ -2006,19 +1980,24 @@ public:
         laserOdometryROS.pose.covariance[0] = double(imuPreintegrationResetId);
         // /lidar/mapping/odometry"
         pubOdomAftMappedROS.publish(laserOdometryROS);
+
         // Publish TF
         static tf::TransformBroadcaster br;
-
-        Eigen::Quaterniond q(extRot);
-        tf::Transform      t_odom_to_lidar =
+        Eigen::Quaterniond              q(extRot);
+        tf::Transform                   t_odom_to_lidar =
             tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
                           tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
-        tf::StampedTransform trans_odom_to_lidar =
-            tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "base_link", "lidar_link");
         tf::StampedTransform trans_odom_to_lidar_odom =
             tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, "odom", "lidar_odom");
-        br.sendTransform(trans_odom_to_lidar);
         br.sendTransform(trans_odom_to_lidar_odom);
+
+        tf::Transform t_lidar_odom_to_lidar = tf::Transform(
+            tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1],
+                                        transformTobeMapped[2]),
+            tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+        tf::StampedTransform trans_lidar_odom_to_lidar = tf::StampedTransform(
+            t_lidar_odom_to_lidar, timeLaserInfoStamp, "lidar_odom", "lidar_link");
+        br.sendTransform(trans_lidar_odom_to_lidar);
     }
 
     void updatePath(const PointTypePose &pose_in)
@@ -2049,7 +2028,8 @@ public:
         // Publish surrounding key frames
         // "/lidar/mapping/map_local"
         // 局部面地图
-        publishCloud(&pubRecentKeyFrames, laserCloudSurfFromMapDS, timeLaserInfoStamp, "odom");
+        publishCloud(&pubRecentKeyFrames, laserCloudSurfFromMapDS, timeLaserInfoStamp,
+                     "lidar_odom");
         // publish registered key frame
         // "/lidar/mapping/cloud_registered"
         if (pubRecentKeyFrame.getNumSubscribers() != 0)

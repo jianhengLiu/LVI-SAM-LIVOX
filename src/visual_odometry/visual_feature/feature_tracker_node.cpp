@@ -284,8 +284,7 @@ void lidar_callback(const sensor_msgs::PointCloud2ConstPtr &laser_msg)
     }
     *laser_cloud_in = *laser_cloud_in_filter;
 
-    // 4. offset T_lidar -> T_camera
-    // TODO: 这里暂时修改了配置 实际是 T_lidar -> T_imu
+    // 4. offset T_lidar -> T_imu
     pcl::PointCloud<PointType>::Ptr laser_cloud_offset(new pcl::PointCloud<PointType>());
     Eigen::Affine3f                 transOffset =
         pcl::getTransformation(L_I_TX, L_I_TY, L_I_TZ, L_I_RX, L_I_RY, L_I_RZ);

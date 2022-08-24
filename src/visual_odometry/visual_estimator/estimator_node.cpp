@@ -157,7 +157,7 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
         predict(imu_msg);
         std_msgs::Header header = imu_msg->header;
         if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
-            pubLatestOdometry(tmp_P, tmp_Q, tmp_V, header, estimator.failureCount);
+            pubLatestOdometry(estimator, tmp_P, tmp_Q, tmp_V, header, estimator.failureCount);
     }
 }
 
@@ -292,7 +292,6 @@ void process()
             initialization_info =
                 odomRegister->getOdometry(odomQueue, img_msg->header.stamp.toSec() + estimator.td);
             m_odom.unlock();
-
 
             estimator.processImage(image, initialization_info, img_msg->header);
             // double whole_t = t_s.toc();

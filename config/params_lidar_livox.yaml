@@ -9,7 +9,6 @@ lvi_sam:
 
   # Heading
   useImuHeadingInitialization: false # if using GPS data, set to "true"
-  useImuMagnetometer: false
 
   # Export settings
   savePCD: false # https://github.com/TixiaoShan/LIO-SAM/issues/3
@@ -35,7 +34,6 @@ lvi_sam:
   # Extrinsics (lidar -> IMU)
   extrinsicTrans: [0.04165, 0.02326, -0.0284]
   extrinsicRot: [1, 0, 0, 0, 1, 0, 0, 0, 1]
-  extrinsicRPY: [1, 0, 0, 0, 1, 0, 0, 0, 1] # not required if useImuMagnetometer: false
 
   # LOAM feature threshold
   edgeThreshold: 1.0

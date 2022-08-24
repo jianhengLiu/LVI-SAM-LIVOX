@@ -138,7 +138,7 @@ public:
         subImu  = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this,
                                                 ros::TransportHints().tcpNoDelay());
         subOdom = nh.subscribe<nav_msgs::Odometry>(
-            PROJECT_NAME + "/vins/odometry/imu_propagate_ros", 2000,
+            PROJECT_NAME + "/vins/odometry/imu_propagate", 2000,
             &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
 
         switch (lidarType)
