@@ -581,7 +581,7 @@ public:
             if (cureKeyframeCloud->size() < 300 || prevKeyframeCloud->size() < 1000)
                 return;
             if (pubHistoryKeyFrames.getNumSubscribers() != 0)
-                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp, "odom");
+                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp, "lidar_odom");
         }
 
         // get keyframe pose
@@ -625,7 +625,7 @@ public:
             pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
             pcl::transformPointCloud(*cureKeyframeCloud_new, *closed_cloud,
                                      icp.getFinalTransformation());
-            publishCloud(&pubIcpKeyFrames, closed_cloud, timeLaserInfoStamp, "odom");
+            publishCloud(&pubIcpKeyFrames, closed_cloud, timeLaserInfoStamp, "lidar_odom");
         }
 
         // add graph factor
@@ -657,7 +657,7 @@ public:
             visualization_msgs::MarkerArray markerArray;
             // loop nodes
             visualization_msgs::Marker markerNode;
-            markerNode.header.frame_id    = "odom";
+            markerNode.header.frame_id    = "lidar_odom";
             markerNode.header.stamp       = timeLaserInfoStamp;
             markerNode.action             = visualization_msgs::Marker::ADD;
             markerNode.type               = visualization_msgs::Marker::SPHERE_LIST;
@@ -673,7 +673,7 @@ public:
             markerNode.color.a            = 1;
             // loop edges
             visualization_msgs::Marker markerEdge;
-            markerEdge.header.frame_id    = "odom";
+            markerEdge.header.frame_id    = "lidar_odom";
             markerEdge.header.stamp       = timeLaserInfoStamp;
             markerEdge.action             = visualization_msgs::Marker::ADD;
             markerEdge.type               = visualization_msgs::Marker::LINE_LIST;
@@ -2004,7 +2004,7 @@ public:
     {
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp    = ros::Time().fromSec(pose_in.time);
-        pose_stamped.header.frame_id = "odom";
+        pose_stamped.header.frame_id = "lidar_odom";
         pose_stamped.pose.position.x = pose_in.x;
         pose_stamped.pose.position.y = pose_in.y;
         pose_stamped.pose.position.z = pose_in.z;
@@ -2024,7 +2024,7 @@ public:
         // publish key poses
         // "/lidar/mapping/trajectory"
         // 经过修正的位姿(点云形式)
-        publishCloud(&pubKeyPoses, cloudKeyPoses6D, timeLaserInfoStamp, "odom");
+        publishCloud(&pubKeyPoses, cloudKeyPoses6D, timeLaserInfoStamp, "lidar_odom");
         // Publish surrounding key frames
         // "/lidar/mapping/map_local"
         // 局部面地图
@@ -2051,14 +2051,14 @@ public:
             pcl::fromROSMsg(cloudInfo.cloud_deskewed, *cloudOut);
             PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
             *cloudOut                = *transformPointCloud(cloudOut, &thisPose6D);
-            publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp, "odom");
+            publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp, "lidar_odom");
         }
         // publish path
         // "/lidar/mapping/path"
         if (pubPath.getNumSubscribers() != 0)
         {
             globalPath.header.stamp    = timeLaserInfoStamp;
-            globalPath.header.frame_id = "odom";
+            globalPath.header.frame_id = "lidar_odom";
             pubPath.publish(globalPath);
         }
     }

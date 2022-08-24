@@ -116,8 +116,6 @@ public:
 
         if (odomQueue.empty())
         {
-            // ROS_INFO("No odometry msg!");
-            // cout << "No odometry msg!" << endl;
             return odometry_channel;
         }
 

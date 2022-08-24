@@ -103,12 +103,9 @@ public:
     float              imuGyrBiasN;
     float              imuGravity;
     vector<double>     extRotV;
-    vector<double>     extRPYV;
     vector<double>     extTransV;
     Eigen::Matrix3d    extRot;
-    Eigen::Matrix3d    extRPY;
     Eigen::Vector3d    extTrans;
-    Eigen::Quaterniond extQRPY;
 
     // LOAM
     float edgeThreshold;
@@ -179,15 +176,11 @@ public:
         nh.param<float>(PROJECT_NAME + "/imuGyrBiasN", imuGyrBiasN, 0.00003);
         nh.param<float>(PROJECT_NAME + "/imuGravity", imuGravity, 9.80511);
         nh.param<vector<double>>(PROJECT_NAME + "/extrinsicRot", extRotV, vector<double>());
-        nh.param<vector<double>>(PROJECT_NAME + "/extrinsicRPY", extRPYV, vector<double>());
         nh.param<vector<double>>(PROJECT_NAME + "/extrinsicTrans", extTransV, vector<double>());
         extRot =
             Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRotV.data(), 3, 3);
-        extRPY =
-            Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRPYV.data(), 3, 3);
         extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(
             extTransV.data(), 3, 1);
-        extQRPY = Eigen::Quaterniond(extRPY);
 
         nh.param<float>(PROJECT_NAME + "/edgeThreshold", edgeThreshold, 0.1);
         nh.param<float>(PROJECT_NAME + "/surfThreshold", surfThreshold, 0.1);
