@@ -522,8 +522,7 @@ public:
             globalMapVisualizationLeafSize);  // for global map visualization
         downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
         downSizeFilterGlobalMapKeyFrames.filter(*globalMapKeyFramesDS);
-        publishCloud(&pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
-                     "lidar_odom");
+        publishCloud(&pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp, "odom");
     }
 
     void loopHandler(const std_msgs::Float64MultiArray::ConstPtr &loopMsg)
@@ -579,8 +578,7 @@ public:
             if (cureKeyframeCloud->size() < 300 || prevKeyframeCloud->size() < 1000)
                 return;
             if (pubHistoryKeyFrames.getNumSubscribers() != 0)
-                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp,
-                             "lidar_odom");
+                publishCloud(&pubHistoryKeyFrames, prevKeyframeCloud, timeLaserInfoStamp, "odom");
         }
 
         // get keyframe pose
@@ -624,7 +622,7 @@ public:
             pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
             pcl::transformPointCloud(*cureKeyframeCloud_new, *closed_cloud,
                                      icp.getFinalTransformation());
-            publishCloud(&pubIcpKeyFrames, closed_cloud, timeLaserInfoStamp, "lidar_odom");
+            publishCloud(&pubIcpKeyFrames, closed_cloud, timeLaserInfoStamp, "odom");
         }
 
         // add graph factor
@@ -656,7 +654,7 @@ public:
             visualization_msgs::MarkerArray markerArray;
             // loop nodes
             visualization_msgs::Marker markerNode;
-            markerNode.header.frame_id    = "lidar_odom";
+            markerNode.header.frame_id    = "odom";
             markerNode.header.stamp       = timeLaserInfoStamp;
             markerNode.action             = visualization_msgs::Marker::ADD;
             markerNode.type               = visualization_msgs::Marker::SPHERE_LIST;
@@ -672,7 +670,7 @@ public:
             markerNode.color.a            = 1;
             // loop edges
             visualization_msgs::Marker markerEdge;
-            markerEdge.header.frame_id    = "lidar_odom";
+            markerEdge.header.frame_id    = "odom";
             markerEdge.header.stamp       = timeLaserInfoStamp;
             markerEdge.action             = visualization_msgs::Marker::ADD;
             markerEdge.type               = visualization_msgs::Marker::LINE_LIST;
@@ -945,7 +943,8 @@ public:
             Eigen::Affine3f transBack  = trans2Affine3f(transformTobeMapped);
             Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
-            Eigen::Affine3f transFinal = transBack * transIncre;
+            // Eigen::Affine3f transFinal = transBack * transIncre;
+            Eigen::Affine3f transFinal = transBack;
             pcl::getTranslationAndEulerAngles(
                 transFinal, transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
                 transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
@@ -1967,8 +1966,8 @@ public:
         // Publish odometry for ROS
         nav_msgs::Odometry laserOdometryROS;
         laserOdometryROS.header.stamp          = timeLaserInfoStamp;
-        laserOdometryROS.header.frame_id       = "lidar_odom";
-        laserOdometryROS.child_frame_id        = "lidar_odom_mapping";
+        laserOdometryROS.header.frame_id       = "odom";
+        laserOdometryROS.child_frame_id        = "odom_mapping";
         laserOdometryROS.pose.pose.position.x  = transformTobeMapped[3];
         laserOdometryROS.pose.pose.position.y  = transformTobeMapped[4];
         laserOdometryROS.pose.pose.position.z  = transformTobeMapped[5];
@@ -1986,24 +1985,16 @@ public:
         tf::Transform                   t_lidar_to_imu =
             tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
                           tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
-        tf::StampedTransform trans_odom_to_lidar_odom =
-            tf::StampedTransform(t_lidar_to_imu, timeLaserInfoStamp, "odom", "lidar_odom");
-        br.sendTransform(trans_odom_to_lidar_odom);
-
-        tf::Transform t_lidar_odom_to_lidar = tf::Transform(
-            tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1],
-                                        transformTobeMapped[2]),
-            tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
-        tf::StampedTransform trans_lidar_odom_to_lidar = tf::StampedTransform(
-            t_lidar_odom_to_lidar, timeLaserInfoStamp, "lidar_odom", "lidar_link");
-        br.sendTransform(trans_lidar_odom_to_lidar);
+        tf::StampedTransform trans_lidar_to_imu =
+            tf::StampedTransform(t_lidar_to_imu, timeLaserInfoStamp, "lio_imu", "lio_lidar");
+        br.sendTransform(trans_lidar_to_imu);
     }
 
     void updatePath(const PointTypePose &pose_in)
     {
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp    = ros::Time().fromSec(pose_in.time);
-        pose_stamped.header.frame_id = "lidar_odom";
+        pose_stamped.header.frame_id = "odom";
         pose_stamped.pose.position.x = pose_in.x;
         pose_stamped.pose.position.y = pose_in.y;
         pose_stamped.pose.position.z = pose_in.z;
@@ -2023,12 +2014,11 @@ public:
         // publish key poses
         // "/lidar/mapping/trajectory"
         // 经过修正的位姿(点云形式)
-        publishCloud(&pubKeyPoses, cloudKeyPoses6D, timeLaserInfoStamp, "lidar_odom");
+        publishCloud(&pubKeyPoses, cloudKeyPoses6D, timeLaserInfoStamp, "odom");
         // Publish surrounding key frames
         // "/lidar/mapping/map_local"
         // 局部面地图
-        publishCloud(&pubRecentKeyFrames, laserCloudSurfFromMapDS, timeLaserInfoStamp,
-                     "lidar_odom");
+        publishCloud(&pubRecentKeyFrames, laserCloudSurfFromMapDS, timeLaserInfoStamp, "odom");
         // publish registered key frame
         // "/lidar/mapping/cloud_registered"
         if (pubRecentKeyFrame.getNumSubscribers() != 0)
@@ -2039,7 +2029,7 @@ public:
             *cloudOut += *transformPointCloud(laserCloudCornerLastDS, &thisPose6D);
             *cloudOut += *transformPointCloud(laserCloudSurfLastDS, &thisPose6D);
             // "/lidar/mapping/cloud_registered"
-            publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, "lidar_odom");
+            publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, "odom");
         }
         // publish registered high-res raw cloud
         // "/lidar/mapping/cloud_registered_raw"
@@ -2050,14 +2040,14 @@ public:
             pcl::fromROSMsg(cloudInfo.cloud_deskewed, *cloudOut);
             PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
             *cloudOut                = *transformPointCloud(cloudOut, &thisPose6D);
-            publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp, "lidar_odom");
+            publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp, "odom");
         }
         // publish path
         // "/lidar/mapping/path"
         if (pubPath.getNumSubscribers() != 0)
         {
             globalPath.header.stamp    = timeLaserInfoStamp;
-            globalPath.header.frame_id = "lidar_odom";
+            globalPath.header.frame_id = "odom";
             pubPath.publish(globalPath);
         }
     }

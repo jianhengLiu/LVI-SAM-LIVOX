@@ -5,7 +5,7 @@ lvi_sam:
 
   # Topics
   lidarType: 0 # 0 for Velodyne  VLP-16,1 for Livox-avia
-  pointCloudTopic: "/points_raw"               # Point cloud data
+  pointCloudTopic: "/velodyne_points"               # Point cloud data
   imuTopic: "/imu_raw"                         # IMU data
 
   # Heading
@@ -16,7 +16,7 @@ lvi_sam:
   savePCDDirectory: "/Downloads/LOAM/"        # in your home folder, starts and ends with "/". Warning: the code deletes "LOAM" folder then recreates it. See "mapOptimization" for implementation
 
   # Sensor Settings
-  N_SCAN: 16                                  # number of lidar channel (i.e., 16, 32, 64, 128)
+  N_SCAN: 32                                  # number of lidar channel (i.e., 16, 32, 64, 128)
   Horizon_SCAN: 1800                          # lidar horizontal resolution (Velodyne:1800, Ouster:512,1024,2048)
   timeField: "time"                           # point timestamp field, Velodyne - "time", Ouster - "t"
   downsampleRate: 1                           # default: 1. Downsample your data if too many points. i.e., 16 = 64 / 4, 16 = 16 / 1 

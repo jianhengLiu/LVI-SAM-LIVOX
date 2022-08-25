@@ -136,6 +136,31 @@ public:
             return odometry_channel;
         }
 
+        // convert odometry position from lidar ROS frame to VINS frame
+        Eigen::Vector3d    p_eigen(odomCur.pose.pose.position.x, odomCur.pose.pose.position.y,
+                                   odomCur.pose.pose.position.z);
+        Eigen::Vector3d    v_eigen(odomCur.twist.twist.linear.x, odomCur.twist.twist.linear.y,
+                                   odomCur.twist.twist.linear.z);
+        Eigen::Quaterniond q_eigen(odomCur.pose.pose.orientation.w, odomCur.pose.pose.orientation.x,
+                                   odomCur.pose.pose.orientation.y,
+                                   odomCur.pose.pose.orientation.z);
+        Eigen::Vector3d    p_eigen_new = q_lidar_to_imu_eigen * p_eigen;
+        Eigen::Vector3d    v_eigen_new = q_lidar_to_imu_eigen * v_eigen;
+        Eigen::Quaterniond q_eigen_new = q_eigen * q_lidar_to_imu_eigen.inverse();
+
+        odomCur.pose.pose.position.x = p_eigen_new.x();
+        odomCur.pose.pose.position.y = p_eigen_new.y();
+        odomCur.pose.pose.position.z = p_eigen_new.z();
+
+        odomCur.twist.twist.linear.x = v_eigen_new.x();
+        odomCur.twist.twist.linear.y = v_eigen_new.y();
+        odomCur.twist.twist.linear.z = v_eigen_new.z();
+
+        odomCur.pose.pose.orientation.w = q_eigen_new.w();
+        odomCur.pose.pose.orientation.x = q_eigen_new.x();
+        odomCur.pose.pose.orientation.y = q_eigen_new.y();
+        odomCur.pose.pose.orientation.z = q_eigen_new.z();
+
         // modified:
         odometry_channel[0]  = odomCur.pose.covariance[0];
         odometry_channel[1]  = odomCur.pose.pose.position.x;

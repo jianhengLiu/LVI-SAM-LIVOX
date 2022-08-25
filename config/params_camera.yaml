@@ -14,9 +14,9 @@ lidar_skip: 3                    # skip this amount of scans
 align_camera_lidar_estimation: 1 # align camera and lidar estimation for visualization
 
 # lidar to imu extrinsic
-lidar_to_imu_tx: 0.07642
-lidar_to_imu_ty: -0.03006
-lidar_to_imu_tz: -0.03636
+lidar_to_imu_tx: 0.05
+lidar_to_imu_ty: -0.07
+lidar_to_imu_tz: -0.07
 lidar_to_imu_rx: 3.1415926
 lidar_to_imu_ry: 0.0
 lidar_to_imu_rz: 3.1415926

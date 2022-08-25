@@ -28,8 +28,8 @@ public:
     ros::Publisher  pubImuOdometry;
     ros::Publisher  pubImuPath;
 
-    // odom -> imu_link
-    tf::TransformBroadcaster tfOdom2ImuLink;
+    // odom -> lio_lidar
+    tf::TransformBroadcaster tfOdom2LidarLink;
 
     bool systemInitialized = false;
 
@@ -65,10 +65,6 @@ public:
 
     int key                      = 1;
     int imuPreintegrationResetId = 0;
-
-    gtsam::Pose3 lidar2Imu =
-        gtsam::Pose3(gtsam::Rot3(extRot), gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
-    gtsam::Pose3 imu2Lidar = lidar2Imu.inverse();
 
     IMUPreintegration()
     {
@@ -187,7 +183,7 @@ public:
             }
             // initial pose
             // 添加里程计位姿先验因子
-            prevPose_ = lidar2Imu.compose(lidarPose).compose(imu2Lidar);
+            prevPose_ = lidarPose;
             // X(0)表示第一个位姿，有一个先验的约束。约束内容为，lidar到imu下的prevPose_这么一个位姿
             // 该约束的权重，置信度为priorPoseNoise(1e-2)，越小代表置信度越高
             gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
@@ -296,7 +292,7 @@ public:
             gtsam::noiseModel::Diagonal::Sigmas(sqrt(imuIntegratorOpt_->deltaTij()) *
                                                 noiseModelBetweenBias)));
         // add pose factor
-        gtsam::Pose3 curPose = (lidar2Imu.compose(lidarPose)).compose(imu2Lidar);
+        gtsam::Pose3 curPose = lidarPose;
         // 对于 LIO-SAM ，如果退化就让置信度小一些
         // LIO-SAM 此处代码为：
         // gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curPose, degenerate ? correctionNoise2 : correctionNoise);
@@ -433,18 +429,18 @@ public:
         nav_msgs::Odometry odometry;
         odometry.header.stamp    = thisImu.header.stamp;
         odometry.header.frame_id = "odom";
-        odometry.child_frame_id  = "odom_imu";
+        odometry.child_frame_id  = "odom_lidar";
 
         // transform imu pose to ldiar
-        gtsam::Pose3 imuPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
+        gtsam::Pose3 lidarPose = gtsam::Pose3(currentState.quaternion(), currentState.position());
 
-        odometry.pose.pose.position.x    = imuPose.translation().x();
-        odometry.pose.pose.position.y    = imuPose.translation().y();
-        odometry.pose.pose.position.z    = imuPose.translation().z();
-        odometry.pose.pose.orientation.x = imuPose.rotation().toQuaternion().x();
-        odometry.pose.pose.orientation.y = imuPose.rotation().toQuaternion().y();
-        odometry.pose.pose.orientation.z = imuPose.rotation().toQuaternion().z();
-        odometry.pose.pose.orientation.w = imuPose.rotation().toQuaternion().w();
+        odometry.pose.pose.position.x    = lidarPose.translation().x();
+        odometry.pose.pose.position.y    = lidarPose.translation().y();
+        odometry.pose.pose.position.z    = lidarPose.translation().z();
+        odometry.pose.pose.orientation.x = lidarPose.rotation().toQuaternion().x();
+        odometry.pose.pose.orientation.y = lidarPose.rotation().toQuaternion().y();
+        odometry.pose.pose.orientation.z = lidarPose.rotation().toQuaternion().z();
+        odometry.pose.pose.orientation.w = lidarPose.rotation().toQuaternion().w();
 
         odometry.twist.twist.linear.x  = currentState.velocity().x();
         odometry.twist.twist.linear.y  = currentState.velocity().y();
@@ -490,8 +486,8 @@ public:
         tf::poseMsgToTF(odometry.pose.pose, tCur);
         // 这个应该是 T_odom_imu
         tf::StampedTransform odom_2_baselink =
-            tf::StampedTransform(tCur, thisImu.header.stamp, "odom", "imu_link");
-        tfOdom2ImuLink.sendTransform(odom_2_baselink);
+            tf::StampedTransform(tCur, thisImu.header.stamp, "odom", "lio_lidar");
+        tfOdom2LidarLink.sendTransform(odom_2_baselink);
     }
 };
 

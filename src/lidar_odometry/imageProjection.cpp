@@ -399,12 +399,6 @@ public:
         if (imuQueue.empty() || imuQueue.front().header.stamp.toSec() > timeScanCur ||
             imuQueue.back().header.stamp.toSec() < timeScanNext)
         {
-            // cout << "imuQueue.front().header.stamp.toSec()="
-            //      << to_string(imuQueue.front().header.stamp.toSec()) << endl;
-            // cout << "imuQueue.back().header.stamp.toSec()="
-            //      << to_string(imuQueue.back().header.stamp.toSec()) << endl;
-            // cout << "timeScanCur=" << to_string(timeScanCur) << endl;
-            // cout << "timeScanNext=" << to_string(timeScanNext) << endl;
             ROS_DEBUG("Waiting for IMU data ...");
             return false;
         }
@@ -793,7 +787,7 @@ public:
     {
         cloudInfo.header = cloudHeader;
         cloudInfo.cloud_deskewed =
-            publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, "lidar_link");
+            publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, "lio_lidar");
         pubLaserCloudInfo.publish(cloudInfo);
     }
 };

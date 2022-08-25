@@ -553,9 +553,9 @@ Visualization Manager:
           Value: false
         imu_link:
           Value: true
-        lidar_link:
+        lio_imu:
           Value: true
-        lidar_odom:
+        lio_lidar:
           Value: true
         loam_camera:
           Value: false
@@ -585,12 +585,8 @@ Visualization Manager:
       Show Names: true
       Tree:
         odom:
-          imu_link:
-            imu_enu_link:
-              {}
-          lidar_odom:
-            lidar_link:
-              {}
+          lio_lidar:
+            {}
           vins_world:
             vins_body:
               vins_camera:
@@ -624,16 +620,16 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.08606219291687012
-        Y: -0.016125738620758057
-        Z: 0.30172932147979736
+        X: -13.405662536621094
+        Y: 3.6255621910095215
+        Z: 0.3229321837425232
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.21520251035690308
-      Target Frame: imu_link
+      Pitch: 0.21020251512527466
+      Target Frame: lio_lidar
       Yaw: 3.2053983211517334
     Saved: ~
 Window Geometry:

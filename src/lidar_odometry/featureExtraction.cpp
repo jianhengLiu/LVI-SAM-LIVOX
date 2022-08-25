@@ -313,9 +313,9 @@ public:
         freeCloudInfoMemory();
         // save newly extracted features
         cloudInfo.cloud_corner =
-            publishCloud(&pubCornerPoints, cornerCloud, cloudHeader.stamp, "lidar_link");
+            publishCloud(&pubCornerPoints, cornerCloud, cloudHeader.stamp, "lio_lidar");
         cloudInfo.cloud_surface =
-            publishCloud(&pubSurfacePoints, surfaceCloud, cloudHeader.stamp, "lidar_link");
+            publishCloud(&pubSurfacePoints, surfaceCloud, cloudHeader.stamp, "lio_lidar");
         // publish to mapOptimization
         pubLaserCloudInfo.publish(cloudInfo);
     }

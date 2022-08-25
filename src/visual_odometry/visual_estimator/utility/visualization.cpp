@@ -126,7 +126,7 @@ void pubLatestOdometry(const Estimator &estimator, const Eigen::Vector3d &P,
             try
             {
                 tf::StampedTransform trans_odom_baselink;
-                listener.lookupTransform("odom", "imu_link", ros::Time(0), trans_odom_baselink);
+                listener.lookupTransform("odom", "lio_imu", ros::Time(0), trans_odom_baselink);
                 t_odom_world = transformConversion(trans_odom_baselink) *
                                transformConversion(trans_world_vinsbody_ros).inverse();
                 last_align_time = header.stamp.toSec();
