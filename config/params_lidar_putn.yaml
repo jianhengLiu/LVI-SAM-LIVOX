@@ -68,4 +68,4 @@ lvi_sam:
   # Visualization
   globalMapVisualizationSearchRadius: 1000.0    # meters, global map visualization radius
   globalMapVisualizationPoseDensity: 10.0       # meters, global map visualization keyframe density
-  globalMapVisualizationLeafSize: 1.0           # meters, global map visualization cloud density
+  globalMapVisualizationLeafSize: 0.1           # meters, global map visualization cloud density

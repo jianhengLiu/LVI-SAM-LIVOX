@@ -75,6 +75,7 @@ public:
 
     vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
     vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
+    vector<pcl::PointCloud<PointType>::Ptr> cloudKeyFrames;
 
     pcl::PointCloud<PointType>::Ptr cloudKeyPoses3D;  // 以点云的方法储存关键帧的位姿？
     pcl::PointCloud<PointTypePose>::Ptr cloudKeyPoses6D;
@@ -86,6 +87,9 @@ public:
         laserCloudCornerLastDS;  // downsampled corner featuer set from odoOptimization
     pcl::PointCloud<PointType>::Ptr
         laserCloudSurfLastDS;  // downsampled surf featuer set from odoOptimization
+
+    pcl::PointCloud<PointType>::Ptr
+        laserCloudLast;  // downsampled surf featuer set from odoOptimization
 
     pcl::PointCloud<PointType>::Ptr laserCloudOri;
     pcl::PointCloud<PointType>::Ptr coeffSel;
@@ -205,6 +209,8 @@ public:
             new pcl::PointCloud<PointType>());  // corner feature set from odoOptimization
         laserCloudSurfLast.reset(
             new pcl::PointCloud<PointType>());  // surf feature set from odoOptimization
+        laserCloudLast.reset(
+            new pcl::PointCloud<PointType>());  // surf feature set from odoOptimization
         laserCloudCornerLastDS.reset(
             new pcl::PointCloud<PointType>());  // downsampled corner featuer set from
                                                 // odoOptimization
@@ -253,6 +259,7 @@ public:
         cloudInfo = *msgIn;
         pcl::fromROSMsg(msgIn->cloud_corner, *laserCloudCornerLast);
         pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
+        pcl::fromROSMsg(msgIn->cloud_deskewed, *laserCloudLast);
 
         std::lock_guard<std::mutex> lock(mtx);
 
@@ -1907,12 +1914,15 @@ public:
         // 将当前帧降采样后的角点和面点存至thisCornerKeyFrame、thisSurfKeyFrame
         pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new pcl::PointCloud<PointType>());
         pcl::PointCloud<PointType>::Ptr thisSurfKeyFrame(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr thisCloudKeyFrame(new pcl::PointCloud<PointType>());
         pcl::copyPointCloud(*laserCloudCornerLastDS, *thisCornerKeyFrame);
         pcl::copyPointCloud(*laserCloudSurfLastDS, *thisSurfKeyFrame);
+        pcl::copyPointCloud(*laserCloudLast, *thisCloudKeyFrame);
 
         // save key frame cloud
         cornerCloudKeyFrames.push_back(thisCornerKeyFrame);
         surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+        cloudKeyFrames.push_back(thisCloudKeyFrame);
 
         // save path for visualization
         // 更新了globalPath
@@ -1978,16 +1988,6 @@ public:
         laserOdometryROS.pose.covariance[0] = double(imuPreintegrationResetId);
         // /lidar/mapping/odometry"
         pubOdomAftMappedROS.publish(laserOdometryROS);
-
-        // Publish TF
-        static tf::TransformBroadcaster br;
-        Eigen::Quaterniond              q(extRot);
-        tf::Transform                   t_lidar_to_imu =
-            tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
-                          tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
-        tf::StampedTransform trans_lidar_to_imu =
-            tf::StampedTransform(t_lidar_to_imu, timeLaserInfoStamp, "lio_imu", "lio_lidar");
-        br.sendTransform(trans_lidar_to_imu);
     }
 
     void updatePath(const PointTypePose &pose_in)
@@ -2042,6 +2042,35 @@ public:
             *cloudOut                = *transformPointCloud(cloudOut, &thisPose6D);
             publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp, "odom");
         }
+        if (pubLaserCloudSurround.getNumSubscribers() != 0)
+        {
+            pcl::PointCloud<PointType>::Ptr globalMapKeyFrames(new pcl::PointCloud<PointType>());
+            pcl::PointCloud<PointType>::Ptr globalMapKeyFramesDS(new pcl::PointCloud<PointType>());
+            // 将当前帧去畸变原始点云转至W系发布出去
+            pcl::fromROSMsg(cloudInfo.cloud_deskewed, *globalMapKeyFrames);
+            PointTypePose thisPose6D = trans2PointTypePose(transformTobeMapped);
+            *globalMapKeyFrames      = *transformPointCloud(globalMapKeyFrames, &thisPose6D);
+
+            // extract visualized and downsampled key frames
+            for (int i = 0; i < (int)cloudKeyPoses3D->points.size(); ++i)
+            {
+                if (pointDistance(cloudKeyPoses3D->points[i], cloudKeyPoses3D->back()) >
+                    surroundingKeyframeSearchRadius)
+                    continue;
+
+                *globalMapKeyFrames +=
+                    *transformPointCloud(cloudKeyFrames[i], &cloudKeyPoses6D->points[i]);
+            }
+            // downsample visualized points
+            pcl::VoxelGrid<PointType>
+                downSizeFilterGlobalMapKeyFrames;  // for global map visualization
+            downSizeFilterGlobalMapKeyFrames.setLeafSize(
+                globalMapVisualizationLeafSize, globalMapVisualizationLeafSize,
+                globalMapVisualizationLeafSize);  // for global map visualization
+            downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
+            downSizeFilterGlobalMapKeyFrames.filter(*globalMapKeyFramesDS);
+            publishCloud(&pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp, "odom");
+        }
         // publish path
         // "/lidar/mapping/path"
         if (pubPath.getNumSubscribers() != 0)
@@ -2062,12 +2091,12 @@ int main(int argc, char **argv)
     ROS_INFO("\033[1;32m----> Lidar Map Optimization Started.\033[0m");
 
     std::thread loopDetectionthread(&mapOptimization::loopClosureThread, &MO);
-    std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
+    // std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
 
     ros::spin();
 
     loopDetectionthread.join();
-    visualizeMapThread.join();
+    // visualizeMapThread.join();
 
     return 0;
 }

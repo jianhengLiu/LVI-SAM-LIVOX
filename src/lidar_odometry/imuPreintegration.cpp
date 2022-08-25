@@ -28,9 +28,6 @@ public:
     ros::Publisher  pubImuOdometry;
     ros::Publisher  pubImuPath;
 
-    // odom -> lio_lidar
-    tf::TransformBroadcaster tfOdom2LidarLink;
-
     bool systemInitialized = false;
 
     gtsam::noiseModel::Diagonal::shared_ptr priorPoseNoise;
@@ -482,12 +479,21 @@ public:
         }
 
         // publish transformation
-        tf::Transform tCur;
+        static tf::TransformBroadcaster br;
+        tf::Transform                   tCur;
         tf::poseMsgToTF(odometry.pose.pose, tCur);
         // 这个应该是 T_odom_imu
         tf::StampedTransform odom_2_baselink =
             tf::StampedTransform(tCur, thisImu.header.stamp, "odom", "lio_lidar");
-        tfOdom2LidarLink.sendTransform(odom_2_baselink);
+        br.sendTransform(odom_2_baselink);
+
+        Eigen::Quaterniond q(extRot);
+        tf::Transform      t_imu_to_lidar =
+            tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()),
+                          tf::Vector3(extTrans.x(), extTrans.y(), extTrans.z()));
+        tf::StampedTransform trans_imu_to_lidar = tf::StampedTransform(
+            t_imu_to_lidar.inverse(), thisImu.header.stamp, "lio_lidar", "lio_imu");
+        br.sendTransform(trans_imu_to_lidar);
     }
 };
 
