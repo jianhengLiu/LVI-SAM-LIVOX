@@ -8,6 +8,11 @@
 - Comments based on [LVI-SAM_detailed_comments
 ](https://github.com/electech6/LVI-SAM_detailed_comments).
 
+Check out the combination with PUTN at https://github.com/jianhengLiu/putn
+<p align = "center">
+<img src="doc/lvisam_putn.gif" width = "600" height = "300" border="5" />
+</p>
+
 # LVI-SAM
 
 This repository contains code for a lidar-visual-inertial odometry and mapping system, which combines the advantages of [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM/tree/a246c960e3fca52b989abf888c8cf1fae25b7c25) and [Vins-Mono](https://github.com/HKUST-Aerial-Robotics/VINS-Mono) at a system level.

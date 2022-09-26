@@ -1,8 +1,5 @@
 <launch>
-
-    <!--- Robot State TF -->
-    <include file="$(find lvi_sam)/launch/include/module_robot_state_publisher.launch" />
-
+    
     <!--- Run Rviz-->
     <include file="$(find lvi_sam)/launch/include/module_rviz.launch" />
 
